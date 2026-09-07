@@ -137,7 +137,7 @@ work on the queue cold, without having just run `add` or `sync` in this session.
 | `/flow:add` | Add a source stream (URL, file, thread), or a derived stream defined as a transformation of one or more existing source streams. For a source stream: classifies it as static or syncable (see below), downloads/snapshots it locally, and records the exact retrieval recipe it used as the stream's `descriptor` in the intent ledger. For a derived stream: captures which source stream(s) feed it (`source_stream_ids`) and the transformation recipe (`descriptor`), and adds a ledger entry for it too. If the content implies something actionable (e.g. a meeting transcript with action items), allows the user to act on it immediately where easy — direct edits to affected streams and/or new queue items — rather than waiting for a future sync. |
 | `/flow:sync` | Pull the latest version of every syncable source stream, diff each against its last local snapshot, and re-run any derived stream whose source(s) changed. Summarizes what changed and works with the user to take action: projecting deltas based on immediate decisions into streams, adding items to the queue document (`queue.md` for now) when it needs longer-term user judgment. See [Sync execution model](#sync-execution-model) for how this fans out across subagents. |
 | `/flow:manage` | Initiate a change to how a stream is tracked: toggle it between syncable and static, or remove it from the workspace entirely. Removing a stream deletes its local folder and its ledger entry — it never deletes or otherwise touches the remote document/thread/query it pointed to. |
-| `/flow:work` | Bring the queue into context, summarized and grouped by intent/topic rather than as a flat list, and work through it with the user — resuming cold, without having just come from `add` or `sync` this session. When working an item draws on a stream in a way that changes or sharpens why it matters, rewrites that stream's `intents` list in the ledger in place. |
+| `/flow:work` | Bring the queue into context, summarized and grouped by intent/topic rather than as a flat list, and work through it with the user — resuming cold, without having just come from `add` or `sync` this session. Before acting on a given stream, syncs just that stream (not the whole workspace) so the agent starts from its latest version — see [Pre-work sync](#pre-work-sync). When working an item draws on a stream in a way that changes or sharpens why it matters, rewrites that stream's `intents` list in the ledger in place. |
 | `/flow:ask` | Deep research across all tracked streams for a question that doesn't map to a single queue item. |
 
 ## Adding a stream
@@ -174,6 +174,30 @@ entries, the user has enough of a feel for how the classifier guesses that the n
 bare statement of the classification, e.g. "Classified as syncable (Google Doc default)." The
 classification itself is stored per-entry in the ledger (see below) — it isn't a separate storage
 location.
+
+### Local file streams
+
+A local file — a Word doc, PowerPoint deck, spreadsheet, or markdown file the user is actively
+iterating on outside the workspace — is a source stream like any other; its `descriptor` is just
+the file's path, the same as the existing "just a URL/file path when the retrieval has no
+parameters to lose" case. What's specific to local files is the syncable default and what
+syncable implies:
+
+- **Defaults to static.** Unlike a Google Doc or Slack thread, a local file doesn't default to
+  syncable — most files a user points OpenFlow at (a reference doc, a one-off export) aren't
+  something they're actively revising. `/flow:add` mentions the option rather than assuming it:
+  "Added as static. If you're going to keep editing this one, I can track it for changes — just
+  let me know." Explicit intent language in the add prompt overrides this the same way it does for
+  any other stream (see [Static vs. syncable classification](#static-vs-syncable-classification)
+  above).
+- **The streams folder is agent-facing, not a working copy.** Whether static or syncable, the
+  snapshot that lands in `streams/stream-*/` is there for the agent to diff and reason against —
+  never a copy the user is meant to open and edit. The user keeps working in the actual source
+  file at its real path; syncing just re-reads it from there.
+- **The path is the only handle the agent has.** If a syncable local file gets moved or renamed,
+  the agent has no way to discover its new location on its own — the user has to tell it (or run
+  `/flow:manage` to update the descriptor). Until then, sync on that stream fails the same way any
+  other broken source would — see [Sync failures](#sync-failures).
 
 ### Intent ledger
 
@@ -538,6 +562,50 @@ itself in one long pass — it fans work out to subagents and stays focused on s
    `descriptor` instructions, and the result is diffed/summarized the same way a source stream
    would be.
 
+### Sync failures
+
+A sync attempt on any given stream can fail for reasons that have nothing to do with what
+changed — the MCP server is down or erroring, an API key/OAuth token expired, a local file's path
+no longer resolves because it was moved or renamed without telling the agent (see
+[Local file streams](#local-file-streams)). These are all the same kind of event from
+`/flow:sync`'s perspective: the stream couldn't be refreshed this time. Rather than handling each
+cause differently, every one of them is surfaced to the user the same way the
+[ledger's referential-integrity checks](#ledger-validation-and-mutation) already are — reported,
+never silently dropped — e.g. "Couldn't sync stream-045 (Google Docs MCP server returned 401 —
+token likely expired)" or "Couldn't sync stream-061 (no file found at
+`~/Documents/vendor-contract.docx` — did it move or get renamed?)". The stream is left at its last
+good snapshot, work on other streams continues, and fixing the underlying problem (re-auth,
+pointing the descriptor at the new path) is left to the user and agent to work out together — not
+something `/flow:sync` tries to guess or recover from on its own.
+
+## Pre-work sync
+
+Before `/flow:work` starts acting on a specific stream — replying, editing, resolving a queue
+item — it syncs just that stream first, using the same per-stream dispatch as
+[step 1 of the sync execution model](#sync-execution-model) above, rather than running a full
+`/flow:sync` across the workspace. There's little reason to have the agent work from a stale
+version of the one stream in front of it, and since streams are versioned/snapshotted on every
+sync, pulling the latest is non-destructive — so this happens without asking the user to approve
+it first, just a brief heads-up ("pulling the latest version of stream-045 first") before
+proceeding.
+
+Scope is deliberately narrow: only the stream(s) the work item actually touches, never the rest of
+the workspace. A full sync surfaces whatever else changed across every tracked stream — exactly
+the kind of unrelated news `/flow:sync` is supposed to raise — which would pull the user's
+attention away from the one thing they sat down to work on. Staying scoped keeps `/flow:work`
+about the item at hand; anything else that's changed elsewhere waits for the next full
+`/flow:sync`.
+
+If the scoped sync does turn up a meaningful change, it should let the user know as it could
+change the nature of the work they are about to do. The user can opt to fold the changes into the
+ledger/queue the normal way (intent list updated, a new queue item written if warranted).  The 
+trade-off is that telling the user derails the user a bit, but the diffs in the document
+may be material to the work at hand.
+
+If the scoped sync fails — see [Sync failures](#sync-failures) above — `/flow:work` proceeds
+against the last good snapshot and tells the user why it couldn't refresh it, rather than
+blocking the work.
+
 ## Queue document
 
 `/flow:sync` doesn't log raw changes ("5 new comments," "John and Mary replied") — it synthesizes
@@ -647,6 +715,25 @@ to a lightweight history/archive is an open question (see below).
   stream snapshot versioning, so a bad edit is recoverable and every change is traceable. See
   [Ledger validation and mutation](#ledger-validation-and-mutation) and
   [Ledger versioning](#ledger-versioning).
+- ~~Whether `/flow:work` should sync before acting on a stream, and if so, how much of the
+  workspace that sync should cover.~~ Resolved: yes, automatically and without asking for
+  approval (syncing is non-destructive and versioned) — but scoped to just the stream(s) the work
+  item touches, never a full workspace `/flow:sync`, so working one item doesn't surface unrelated
+  news from every other tracked stream and pull the user out of flow. See
+  [Pre-work sync](#pre-work-sync).
+- ~~Whether local files the user keeps editing (Word, PowerPoint, Excel, markdown) can be tracked
+  as syncable streams, and if so, how the agent keeps up with them.~~ Resolved: yes — a local file
+  is a source stream whose `descriptor` is its path, defaulting to static (with `/flow:add`
+  offering syncable if the user says they'll keep iterating on it). The user keeps working in the
+  real file; the snapshot in `streams/` is agent-facing only, never a copy meant for the user to
+  edit. If the file moves or gets renamed without the user telling the agent, that's treated as a
+  sync failure like any other. See [Local file streams](#local-file-streams).
+- ~~Whether MCP/API failures during sync (down server, expired credentials) need distinct handling
+  from other broken-stream cases like a moved local file.~~ Resolved: no — all sync failures
+  (unreachable MCP server, expired token, moved local file) are surfaced to the user the same way,
+  following the same report-don't-drop principle as ledger validation, and the stream is simply
+  left at its last good snapshot until the user and agent resolve it. See
+  [Sync failures](#sync-failures).
 
 ## Open threads this doesn't resolve yet
 
