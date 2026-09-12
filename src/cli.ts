@@ -1,0 +1,336 @@
+#!/usr/bin/env node
+import { Command } from "commander";
+import { initWorkspace } from "./commands/init.js";
+import { addStream, removeStream, updateStream, getStreams, LedgerValidationError } from "./ledger/store.js";
+import { applyIntentOperation, IntentOperationError, type IntentOperation } from "./ledger/intents.js";
+import { getDate, getPeriodStart, type PeriodUnit } from "./dates.js";
+import fs from "node:fs";
+import { ADAPTERS } from "./normalize/adapters/index.js";
+import { RENDERERS, TARGET_FILE_EXTENSION } from "./normalize/render.js";
+import { TIER2_EXTRACTION_TEMPLATE } from "./normalize/tier2-templates.js";
+import { cleanup } from "./normalize/cleanup.js";
+import { writeSnapshot, latestSnapshot, listSnapshots, removeStreamFolder } from "./streams/storage.js";
+import type { StreamShape } from "./ledger/types.js";
+import { workspacePaths } from "./workspace.js";
+import { appendQueueItem, removeQueueItem, parseQueueItems, renderGroupedByIntent, type QueueItem } from "./queue.js";
+import { defaultSyncable, classificationNote } from "./classification.js";
+import { applyStreamSync, readLocalFileSource, type RetrievalResult } from "./sync.js";
+
+const program = new Command();
+program.name("openflow").description("Local, versioned memory of the streams a workspace cares about.");
+
+program
+  .command("init")
+  .description("Scaffold the current folder into an OpenFlow workspace")
+  .action(() => {
+    const result = initWorkspace(process.cwd());
+    console.log(`Initialized OpenFlow workspace at ${result.root}`);
+    for (const created of result.created) {
+      console.log(`  created ${created}`);
+    }
+  });
+
+const ledger = program.command("ledger").description("Validated intent ledger access");
+
+ledger
+  .command("add")
+  .description("Add a stream entry (validated schema + referential integrity)")
+  .requiredOption("--json <entry>", "JSON-encoded ledger entry")
+  .action((opts: { json: string }) => {
+    try {
+      const entry = addStream(process.cwd(), JSON.parse(opts.json));
+      console.log(JSON.stringify(entry, null, 2));
+    } catch (err) {
+      failWith(err);
+    }
+  });
+
+ledger
+  .command("remove")
+  .description("Remove a stream entry (local ledger entry only, never the remote source)")
+  .requiredOption("--id <id>", "stream id")
+  .action((opts: { id: string }) => {
+    try {
+      removeStream(process.cwd(), opts.id);
+      console.log(`Removed stream "${opts.id}"`);
+    } catch (err) {
+      failWith(err);
+    }
+  });
+
+ledger
+  .command("update")
+  .description("Update fields on a stream entry (validated schema + referential integrity)")
+  .requiredOption("--id <id>", "stream id")
+  .requiredOption("--json <patch>", "JSON-encoded partial ledger entry")
+  .action((opts: { id: string; json: string }) => {
+    try {
+      const entry = updateStream(process.cwd(), opts.id, JSON.parse(opts.json));
+      console.log(JSON.stringify(entry, null, 2));
+    } catch (err) {
+      failWith(err);
+    }
+  });
+
+ledger
+  .command("get")
+  .description("List valid stream entries; reports (never silently drops) invalid ones")
+  .action(() => {
+    const result = getStreams(process.cwd());
+    console.log(JSON.stringify(result, null, 2));
+    if (result.skipped.length > 0) {
+      for (const skipped of result.skipped) {
+        const id = (skipped.raw as { id?: string })?.id ?? "(unknown id)";
+        console.error(`Skipped invalid entry "${id}": ${skipped.reasons.join("; ")}`);
+      }
+    }
+  });
+
+const intents = program.command("intents").description("In-place intents list rewriting");
+
+intents
+  .command("apply")
+  .description("Apply one sharpen/add/drop operation to a stream's intents, then persist via ledger update")
+  .requiredOption("--id <id>", "stream id")
+  .requiredOption("--op <json>", "JSON-encoded IntentOperation")
+  .action((opts: { id: string; op: string }) => {
+    try {
+      const current = getStreams(process.cwd()).entries.find((e) => e.id === opts.id);
+      if (!current) {
+        throw new Error(`no stream with id "${opts.id}" exists`);
+      }
+      const op = JSON.parse(opts.op) as IntentOperation;
+      const nextIntents = applyIntentOperation(current.intents, op);
+      const entry = updateStream(process.cwd(), opts.id, { intents: nextIntents });
+      console.log(JSON.stringify(entry, null, 2));
+    } catch (err) {
+      failWith(err);
+    }
+  });
+
+const dates = program.command("dates").description("Deterministic relative-date resolution");
+
+dates
+  .command("get-date")
+  .description("Resolve anchor + offset-days to an ISO date (UTC)")
+  .requiredOption("--anchor <date>", "ISO anchor date")
+  .option("--offset-days <n>", "days to add (negative = earlier)", "0")
+  .action((opts: { anchor: string; offsetDays: string }) => {
+    try {
+      console.log(getDate(opts.anchor, Number.parseInt(opts.offsetDays, 10)));
+    } catch (err) {
+      failWith(err);
+    }
+  });
+
+dates
+  .command("get-period-start")
+  .description("Resolve the UTC start-of-period date for a unit (day/week/month/quarter/year)")
+  .requiredOption("--unit <unit>", "day|week|month|quarter|year")
+  .option("--date <date>", "ISO date (defaults to today, UTC)")
+  .action((opts: { unit: PeriodUnit; date?: string }) => {
+    try {
+      console.log(getPeriodStart(opts.unit, opts.date));
+    } catch (err) {
+      failWith(err);
+    }
+  });
+
+const normalize = program.command("normalize").description("Raw -> normalized conversion pipeline");
+
+normalize
+  .command("tier1")
+  .description("Adapter + shared renderer: native payload -> normalized target format")
+  .requiredOption("--adapter <name>", `one of: ${Object.keys(ADAPTERS).join(", ")}`)
+  .requiredOption("--from <file>", "JSON file with the native payload")
+  .action((opts: { adapter: string; from: string }) => {
+    try {
+      const registration = ADAPTERS[opts.adapter];
+      if (!registration) {
+        throw new Error(`unknown adapter "${opts.adapter}"; known adapters: ${Object.keys(ADAPTERS).join(", ")}`);
+      }
+      const payload = JSON.parse(fs.readFileSync(opts.from, "utf8"));
+      const canonical = registration.adapt(payload);
+      const render = RENDERERS[registration.shape] as (c: unknown) => string;
+      console.log(render(canonical));
+    } catch (err) {
+      failWith(err);
+    }
+  });
+
+normalize
+  .command("tier2-template")
+  .description("Print the verbatim-extraction template for a shape")
+  .requiredOption("--shape <shape>", `one of: ${Object.keys(TIER2_EXTRACTION_TEMPLATE).join(", ")}`)
+  .action((opts: { shape: StreamShape }) => {
+    const template = TIER2_EXTRACTION_TEMPLATE[opts.shape];
+    if (!template) {
+      failWith(new Error(`unknown shape "${opts.shape}"`));
+    }
+    console.log(template);
+  });
+
+normalize
+  .command("cleanup")
+  .description("Deterministic clean-up pass shared by every shape's Tier 2 path")
+  .requiredOption("--from <file>", "file with agent-extracted text")
+  .action((opts: { from: string }) => {
+    try {
+      console.log(cleanup(fs.readFileSync(opts.from, "utf8")));
+    } catch (err) {
+      failWith(err);
+    }
+  });
+
+const streams = program.command("streams").description("Per-stream raw + normalized snapshot storage");
+
+streams
+  .command("snapshot")
+  .description("Write a new versioned snapshot for a stream (raw or normalized)")
+  .requiredOption("--id <id>", "stream id")
+  .requiredOption("--kind <kind>", "raw|normalized")
+  .requiredOption("--ext <ext>", "file extension, e.g. md, csv, json, txt")
+  .requiredOption("--from <file>", "file with the snapshot content")
+  .action((opts: { id: string; kind: "raw" | "normalized"; ext: string; from: string }) => {
+    try {
+      const content = fs.readFileSync(opts.from, "utf8");
+      const result = writeSnapshot(process.cwd(), opts.id, opts.kind, opts.ext, content);
+      console.log(JSON.stringify(result, null, 2));
+    } catch (err) {
+      failWith(err);
+    }
+  });
+
+streams
+  .command("latest")
+  .description("Print the path to a stream's latest snapshot of one kind")
+  .requiredOption("--id <id>", "stream id")
+  .requiredOption("--kind <kind>", "raw|normalized")
+  .action((opts: { id: string; kind: "raw" | "normalized" }) => {
+    const latest = latestSnapshot(process.cwd(), opts.id, opts.kind);
+    if (latest) {
+      console.log(latest);
+    }
+  });
+
+streams
+  .command("remove")
+  .description("Delete a stream's local folder (raw + normalized snapshots) only — never the remote source")
+  .requiredOption("--id <id>", "stream id")
+  .action((opts: { id: string }) => {
+    removeStreamFolder(process.cwd(), opts.id);
+    console.log(`Removed local folder for stream "${opts.id}"`);
+  });
+
+streams
+  .command("list")
+  .description("List a stream's snapshots of one kind, oldest first")
+  .requiredOption("--id <id>", "stream id")
+  .requiredOption("--kind <kind>", "raw|normalized")
+  .action((opts: { id: string; kind: "raw" | "normalized" }) => {
+    console.log(JSON.stringify(listSnapshots(process.cwd(), opts.id, opts.kind), null, 2));
+  });
+
+const queue = program.command("queue").description("The human-editable queue document (queue.md)");
+
+queue
+  .command("add")
+  .description("Append a new queue item")
+  .requiredOption("--json <item>", "JSON-encoded {heading, streamLine, intent, body}")
+  .action((opts: { json: string }) => {
+    const { queueFile } = workspacePaths(process.cwd());
+    const item = JSON.parse(opts.json) as QueueItem;
+    const current = fs.existsSync(queueFile) ? fs.readFileSync(queueFile, "utf8") : "";
+    fs.writeFileSync(queueFile, appendQueueItem(current, item), "utf8");
+    console.log(`Added queue item "${item.heading}"`);
+  });
+
+queue
+  .command("remove")
+  .description("Remove a queue item by its exact heading (default on resolution)")
+  .requiredOption("--heading <heading>", "exact item heading")
+  .action((opts: { heading: string }) => {
+    const { queueFile } = workspacePaths(process.cwd());
+    const current = fs.existsSync(queueFile) ? fs.readFileSync(queueFile, "utf8") : "";
+    fs.writeFileSync(queueFile, removeQueueItem(current, opts.heading), "utf8");
+    console.log(`Removed queue item "${opts.heading}"`);
+  });
+
+queue
+  .command("list")
+  .description("List queue items grouped by intent/topic")
+  .action(() => {
+    const { queueFile } = workspacePaths(process.cwd());
+    const current = fs.existsSync(queueFile) ? fs.readFileSync(queueFile, "utf8") : "";
+    const items = parseQueueItems(current);
+    console.log(renderGroupedByIntent(items) || "No items yet.");
+  });
+
+const classify = program.command("classify").description("Static/syncable classification defaults");
+
+classify
+  .command("default")
+  .description("Print the type-default syncable classification and its confirmation note")
+  .requiredOption("--shape <shape>", "stream shape")
+  .option("--local-file", "the stream is a local file", false)
+  .option("--override <bool>", "true|false to override the default (prompt language)")
+  .action((opts: { shape: StreamShape; localFile: boolean; override?: string }) => {
+    const defaultValue = defaultSyncable(opts.shape, opts.localFile);
+    const overridden = opts.override !== undefined;
+    const syncable = overridden ? opts.override === "true" : defaultValue;
+    const note = classificationNote({
+      shape: opts.shape,
+      isLocalFile: opts.localFile,
+      syncable,
+      overriddenByPrompt: overridden,
+    });
+    console.log(JSON.stringify({ syncable, note }, null, 2));
+  });
+
+const sync = program.command("sync").description("Per-stream retrieval outcome -> structured finding");
+
+sync
+  .command("report")
+  .description("Report a stream's sync outcome: success (writes a new snapshot + diff) or failure (leaves last good snapshot)")
+  .requiredOption("--id <id>", "stream id")
+  .requiredOption("--ext <ext>", "normalized file extension")
+  .option("--from <file>", "file with the newly retrieved normalized content (success case)")
+  .option("--failure <reason>", "specific retrieval failure cause (failure case)")
+  .action((opts: { id: string; ext: string; from?: string; failure?: string }) => {
+    try {
+      const retrieval: RetrievalResult = opts.failure
+        ? { ok: false, failure: opts.failure }
+        : { ok: true, normalizedContent: fs.readFileSync(opts.from!, "utf8") };
+      console.log(JSON.stringify(applyStreamSync(process.cwd(), opts.id, opts.ext, retrieval), null, 2));
+    } catch (err) {
+      failWith(err);
+    }
+  });
+
+sync
+  .command("check-local-file")
+  .description("Check whether a local file source still resolves at its recorded path")
+  .requiredOption("--path <path>", "recorded local file path")
+  .action((opts: { path: string }) => {
+    const result = readLocalFileSource(opts.path);
+    console.log(JSON.stringify(result, null, 2));
+    if (!result.ok) {
+      process.exitCode = 1;
+    }
+  });
+
+function failWith(err: unknown): never {
+  if (err instanceof LedgerValidationError || err instanceof IntentOperationError || err instanceof Error) {
+    console.error(err.message);
+  } else {
+    console.error(String(err));
+  }
+  process.exitCode = 1;
+  throw err;
+}
+
+program.parseAsync(process.argv).catch(() => {
+  if (process.exitCode === undefined) {
+    process.exitCode = 1;
+  }
+});

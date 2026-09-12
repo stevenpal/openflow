@@ -1,0 +1,32 @@
+{
+  "name": "@stevenpal/openflow",
+  "version": "0.1.0",
+  "description": "Local, versioned memory of the streams a workspace cares about, for coding-agent harnesses.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "openflow": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "yaml": "^2.5.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^3.2.0"
+  }
+}
