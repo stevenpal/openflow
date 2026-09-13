@@ -27,6 +27,13 @@ describe("openflow init", () => {
 
     const ledgerContent = fs.readFileSync(paths.ledgerFile, "utf8");
     expect(ledgerContent).toContain("streams");
+
+    expect(fs.existsSync(paths.manifestFile)).toBe(true);
+    const manifest = JSON.parse(fs.readFileSync(paths.manifestFile, "utf8"));
+    expect(typeof manifest.cliVersion).toBe("string");
+    expect(manifest.installedSkills.sort()).toEqual(fs.readdirSync(paths.claudeSkillsDir).sort());
+    expect(typeof manifest.installedAt).toBe("string");
+    expect(typeof manifest.updatedAt).toBe("string");
   });
 
   it("keeps two workspaces fully independent", () => {

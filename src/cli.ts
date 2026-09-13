@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import { initWorkspace } from "./commands/init.js";
+import { updateWorkspace, UpdateError } from "./commands/update.js";
+import { cliVersion } from "./manifest.js";
 import { addStream, removeStream, updateStream, getStreams, LedgerValidationError } from "./ledger/store.js";
 import { applyIntentOperation, IntentOperationError, type IntentOperation } from "./ledger/intents.js";
 import { getDate, getPeriodStart, type PeriodUnit } from "./dates.js";
@@ -17,7 +19,10 @@ import { defaultSyncable, classificationNote } from "./classification.js";
 import { applyStreamSync, readLocalFileSource, type RetrievalResult } from "./sync.js";
 
 const program = new Command();
-program.name("openflow").description("Local, versioned memory of the streams a workspace cares about.");
+program
+  .name("openflow")
+  .description("Local, versioned memory of the streams a workspace cares about.")
+  .version(cliVersion(), "-V, --version", "print the installed openflow CLI version");
 
 program
   .command("init")
@@ -27,6 +32,30 @@ program
     console.log(`Initialized OpenFlow workspace at ${result.root}`);
     for (const created of result.created) {
       console.log(`  created ${created}`);
+    }
+  });
+
+program
+  .command("update")
+  .description("Refresh this workspace's installed /flow:* skills and commands to match the installed CLI version")
+  .option("--force", "acknowledge a first-time manifest write on a workspace initialized before this feature existed", false)
+  .action((opts: { force: boolean }) => {
+    try {
+      const result = updateWorkspace(process.cwd(), { force: opts.force });
+      if (!result.updated) {
+        console.log(`Already up to date (${result.toVersion})`);
+        return;
+      }
+      const from = result.fromVersion ?? "(no manifest)";
+      console.log(`Updated workspace from ${from} to ${result.toVersion}`);
+      console.log(`  installed skills: ${result.installedSkills.join(", ")}`);
+    } catch (err) {
+      if (err instanceof UpdateError) {
+        console.error(err.message);
+        process.exitCode = 1;
+        return;
+      }
+      failWith(err);
     }
   });
 

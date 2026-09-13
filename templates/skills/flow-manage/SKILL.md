@@ -2,6 +2,7 @@
 name: flow-manage
 description: Toggle a stream's syncable/static classification or remove it from the OpenFlow workspace. Use when the user wants to stop tracking updates to a stream, resume tracking it, or delete it from the workspace entirely.
 allowed-tools: Bash(openflow:*)
+user-invocable: false
 ---
 
 Manage an existing stream's tracking state in this OpenFlow workspace.

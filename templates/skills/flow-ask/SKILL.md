@@ -2,6 +2,7 @@
 name: flow-ask
 description: Deep research across all tracked streams in the OpenFlow workspace for a question that doesn't map to a single queue item. Use when the user asks a question that may span multiple tracked streams.
 allowed-tools: Bash(openflow:*)
+user-invocable: false
 ---
 
 Answer a question by researching across every tracked stream in this OpenFlow workspace.

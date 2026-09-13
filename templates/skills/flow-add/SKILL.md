@@ -2,6 +2,7 @@
 name: flow-add
 description: Add a new source or derived stream to the OpenFlow workspace ledger. Use when the user wants to start tracking a file, URL, description of a resource (Slack thread, Google Doc, query, etc.), or a computation derived from existing streams.
 allowed-tools: Bash(openflow:*)
+user-invocable: false
 ---
 
 Add a new stream (source or derived) to this OpenFlow workspace.

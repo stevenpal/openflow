@@ -2,6 +2,7 @@
 name: flow-sync
 description: Refresh every syncable stream in the OpenFlow workspace, detect what changed, recompute affected derived streams, and turn findings into ledger intent updates and queue items. Use when the user wants to sync, refresh, or check for updates across tracked streams.
 allowed-tools: Bash(openflow:*), Task
+user-invocable: false
 ---
 
 Sync every syncable stream in this OpenFlow workspace.

@@ -2,6 +2,7 @@
 name: flow-work
 description: Bring the OpenFlow queue into context grouped by intent, and work through items with scoped pre-work sync and in-place intent updates. Use when the user wants to resume work, see what needs a decision, or work through the queue.
 allowed-tools: Bash(openflow:*), Task
+user-invocable: false
 ---
 
 Work through this OpenFlow workspace's queue.

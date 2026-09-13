@@ -8,6 +8,7 @@ export function workspacePaths(root: string) {
     openflowDir,
     ledgerFile: path.join(openflowDir, "ledger.yaml"),
     ledgerSnapshotsDir: path.join(openflowDir, "snapshots", "ledger"),
+    manifestFile: path.join(openflowDir, "manifest.json"),
     streamsDir: path.join(root, "streams"),
     queueFile: path.join(root, "queue.md"),
     claudeSkillsDir: path.join(root, ".claude", "skills"),

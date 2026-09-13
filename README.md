@@ -128,6 +128,23 @@ This scaffolds the workspace in place:
 Each workspace is a self-contained folder with its own ledger — there's no cross-workspace state,
 so a genuinely separate project just gets its own folder and its own `openflow init`.
 
+### Upgrading
+
+`npm install -g @stevenpal/openflow@latest` upgrades the CLI, but a workspace's installed
+`.claude/skills/flow-*` and `.claude/commands/flow/` are copies made at `openflow init` time —
+they stay frozen at whatever version was installed then. After upgrading, run this inside each
+workspace to refresh them:
+
+```
+openflow update
+```
+
+Check what's currently installed with:
+
+```
+openflow --version
+```
+
 ## Core workflow
 
 All day-to-day work happens through slash commands your agent harness loads from the workspace:
