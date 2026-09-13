@@ -3,6 +3,7 @@ import type { StreamShape } from "../ledger/types.js";
 export interface ChatMessage {
   author: string;
   text: string;
+  /** ISO 8601 (e.g. "2026-09-08T14:32:00.000Z"). Adapters must convert source-native timestamp formats at the boundary. */
   ts: string;
   thread_id?: string;
 }
@@ -16,12 +17,14 @@ export interface RichTextBlock {
 export interface RichTextComment {
   anchor: string;
   author: string;
+  /** ISO 8601 (e.g. "2026-09-08T14:32:00.000Z"). Adapters must convert source-native timestamp formats at the boundary. */
   ts: string;
   text: string;
 }
 export interface RichTextSuggestion {
   anchor: string;
   author: string;
+  /** ISO 8601 (e.g. "2026-09-08T14:32:00.000Z"). Adapters must convert source-native timestamp formats at the boundary. */
   ts: string;
   description: string;
 }
