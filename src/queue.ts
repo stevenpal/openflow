@@ -66,23 +66,9 @@ export function removeQueueItem(content: string, heading: string): string {
   return `${QUEUE_DOC_HEADER}\n\n${items.map(renderQueueItem).join("\n\n")}\n`;
 }
 
-/** Groups items by their Intent line, for cold-start `/flow:work` resumption. */
-export function groupByIntent(items: QueueItem[]): Map<string, QueueItem[]> {
-  const groups = new Map<string, QueueItem[]>();
-  for (const item of items) {
-    const group = groups.get(item.intent) ?? [];
-    group.push(item);
-    groups.set(item.intent, group);
-  }
-  return groups;
-}
-
-/** Renders the queue grouped by intent/topic rather than as a flat chronological list. */
-export function renderGroupedByIntent(items: QueueItem[]): string {
-  const groups = groupByIntent(items);
-  const sections = [...groups.entries()].map(
-    ([intent, groupItems]) =>
-      `### ${intent}\n\n${groupItems.map((item) => `- ${item.heading}`).join("\n")}`,
-  );
-  return sections.join("\n\n");
+/** Renders every item in full (heading, Stream/Intent lines, body), document order. Grouping by
+ *  the underlying goal/stake each item's intent serves is a judgment call for the agent reading
+ *  this, not something an exact-text match on the free-form `intent` field can do reliably. */
+export function renderQueueList(items: QueueItem[]): string {
+  return items.map(renderQueueItem).join("\n\n");
 }

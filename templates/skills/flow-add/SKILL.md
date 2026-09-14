@@ -71,7 +71,9 @@ derive a new stream from existing ones.
    openflow ledger add --json '{"id":"...","descriptor":"...","type":"...","origin":"source|derived","source_stream_ids":[...],"syncable":true|false,"description":"...","intents":["..."],"added_at":"<ISO now>"}'
    ```
    Seed `intents` from whatever context the user gave for why this stream matters. If nothing was
-   said, leave it as a single short entry inferred from the content itself.
+   said, leave it as a single short entry inferred from the content itself. Before writing it, read
+   `references/intent-guidance.md` for what makes an intent worth writing (signal + stake, not a
+   content summary).
 
 8. **Immediate action on actionable content**: if what you just retrieved clearly implies something
    actionable right now (e.g. a meeting transcript with a follow-up action item), offer to act on it

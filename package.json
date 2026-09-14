@@ -15,7 +15,9 @@
     "node": ">=18"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "sync-references": "node scripts/sync-references.mjs",
+    "build": "npm run sync-references && tsc -p tsconfig.json",
+    "pretest": "npm run sync-references",
     "test": "vitest run",
     "test:watch": "vitest"
   },

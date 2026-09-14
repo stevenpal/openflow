@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { renderQueueItem, parseQueueItems, appendQueueItem, removeQueueItem, groupByIntent, renderGroupedByIntent } from "../src/queue.js";
+import { renderQueueItem, parseQueueItems, appendQueueItem, removeQueueItem, renderQueueList } from "../src/queue.js";
 import type { QueueItem } from "../src/queue.js";
 
 const item1: QueueItem = {
@@ -51,14 +51,9 @@ describe("queue document format", () => {
     expect(parseQueueItems(content)).toEqual([item1]);
   });
 
-  it("groups a multi-item, multi-intent queue by intent for cold-start resumption", () => {
-    const items = [item1, item2, { ...item1, heading: "Follow up again", intent: item1.intent }];
-    const groups = groupByIntent(items);
-    expect(groups.get(item1.intent)).toHaveLength(2);
-    expect(groups.get(item2.intent)).toHaveLength(1);
-
-    const rendered = renderGroupedByIntent(items);
-    expect(rendered.indexOf(`### ${item1.intent}`)).toBeGreaterThanOrEqual(0);
-    expect(rendered.indexOf(`### ${item2.intent}`)).toBeGreaterThanOrEqual(0);
+  it("renders the full queue as a flat, document-order list for the agent to group itself", () => {
+    const items = [item1, item2];
+    const rendered = renderQueueList(items);
+    expect(rendered).toBe(`${renderQueueItem(item1)}\n\n${renderQueueItem(item2)}`);
   });
 });

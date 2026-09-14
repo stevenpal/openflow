@@ -13,7 +13,7 @@ import { cleanup } from "./normalize/cleanup.js";
 import { writeSnapshot, latestSnapshot, listSnapshots, removeStreamFolder } from "./streams/storage.js";
 import type { StreamShape } from "./ledger/types.js";
 import { workspacePaths } from "./workspace.js";
-import { appendQueueItem, removeQueueItem, parseQueueItems, renderGroupedByIntent, type QueueItem } from "./queue.js";
+import { appendQueueItem, removeQueueItem, parseQueueItems, renderQueueList, type QueueItem } from "./queue.js";
 import { defaultSyncable, classificationNote } from "./classification.js";
 import { applyStreamSync, readLocalFileSource, type RetrievalResult } from "./sync.js";
 
@@ -277,12 +277,12 @@ queue
 
 queue
   .command("list")
-  .description("List queue items grouped by intent/topic")
+  .description("List queue items in full, document order (grouping by intent is the agent's job)")
   .action(() => {
     const { queueFile } = workspacePaths(process.cwd());
     const current = fs.existsSync(queueFile) ? fs.readFileSync(queueFile, "utf8") : "";
     const items = parseQueueItems(current);
-    console.log(renderGroupedByIntent(items) || "No items yet.");
+    console.log(renderQueueList(items) || "No items yet.");
   });
 
 const classify = program.command("classify").description("Static/syncable classification defaults");

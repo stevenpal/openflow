@@ -9,9 +9,13 @@ Work through this OpenFlow workspace's queue.
 
 **Steps**
 
-1. **Bring the queue into context** with `openflow queue list`, which groups items by the **Intent**
-   each traces back to (not a flat chronological list), so the user can resume cold even without
-   having just run `/flow:add` or `/flow:sync` this session. Present that grouping to the user.
+1. **Bring the queue into context** with `openflow queue list`, which prints every item in full,
+   document order. Read `references/intent-guidance.md`, then group the items yourself by the
+   underlying goal/stake each item's intent serves — not by matching intent text (it's free-form and
+   will rarely match exactly across items) and not by which stream an item came from. Items from
+   different streams that feed the same goal belong in the same group; items from the same stream
+   that serve different goals don't. Present that grouping to the user so they can resume cold even
+   without having just run `/flow:add` or `/flow:sync` this session.
 
 2. **When the user selects an item tied to a specific stream**, before acting:
    - Give a brief heads-up ("syncing <stream> first...") and run the **same per-stream subagent
@@ -38,3 +42,5 @@ Work through this OpenFlow workspace's queue.
 - Never skip the heads-up before a scoped sync, or the fold-in-or-continue check when it finds a
   change.
 - Resolved items disappear from the queue by default.
+- Grouping the queue by goal/stake is always the agent's own reasoning over the full item list, not
+  a string match on the `Intent` field — `openflow queue list` never groups on its own.

@@ -44,7 +44,8 @@ Sync every syncable stream in this OpenFlow workspace.
    stream (no changed source, or `syncable: false`) untouched.
 
 4. **Centralized synthesis (main agent only — never delegate this)**: for each changed finding,
-   read that stream's current `intents` from the ledger and decide:
+   read that stream's current `intents` from the ledger and decide (see
+   `references/intent-guidance.md` for what makes an intent worth keeping vs. rewriting):
    - Does this finding sharpen an existing intent, represent a genuinely distinct new intent, or make
      an existing intent stale? Apply exactly one of those via
      `openflow intents apply --id <id> --op '{"kind":"sharpen"|"add"|"drop",...}'`.
