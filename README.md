@@ -96,8 +96,10 @@ The concrete differences that fall out of that:
 
 - **Node.js 18+**
 - **An agent harness that supports skills** — Claude Code, Cursor, Codex, or similar. `openflow
-  init` installs the `/flow:*` skills into `.claude/skills` and `.claude/commands/flow`, so the
-  harness you use day to day needs to be able to load skills from a project folder.
+  init` installs the `/flow:*` skills into `.claude/skills` and `.claude/commands/flow` for Claude
+  Code, and the same skills into `.agents/skills` for other harnesses that read the shared
+  cross-tool skills convention, so the harness you use day to day needs to be able to load skills
+  from a project folder.
 - **Optional: MCP servers** for the specific streams you want to track (e.g. a Google Docs MCP
   server, a Slack MCP server, a database MCP server). Not required to use OpenFlow at all — you
   can add a stream from a plain file or URL with no MCP server behind it — but a configured MCP
@@ -122,8 +124,10 @@ This scaffolds the workspace in place:
 - `.openflow/ledger.yaml` — the intent ledger: every tracked stream, why it matters, whether it's
   synced
 - `queue.md` — the current, editable list of things that need a decision or a reply
-- `.claude/skills/flow-*` and `.claude/commands/flow/` — the `/flow:*` skills your agent harness
-  will load
+- `.claude/skills/flow-*` and `.claude/commands/flow/` — the `/flow:*` skills for Claude Code
+- `.agents/skills/flow-*` — the same skills for other harnesses that read the shared `.agents/skills`
+  convention (note the `/flow:*` command wrapper is Claude Code-specific; other harnesses invoke
+  these skills directly rather than through `/flow:*`)
 
 Each workspace is a self-contained folder with its own ledger — there's no cross-workspace state,
 so a genuinely separate project just gets its own folder and its own `openflow init`.
@@ -131,9 +135,9 @@ so a genuinely separate project just gets its own folder and its own `openflow i
 ### Upgrading
 
 `npm install -g @stevenpal/openflow@latest` upgrades the CLI, but a workspace's installed
-`.claude/skills/flow-*` and `.claude/commands/flow/` are copies made at `openflow init` time —
-they stay frozen at whatever version was installed then. After upgrading, run this inside each
-workspace to refresh them:
+`.claude/skills/flow-*`, `.claude/commands/flow/`, and `.agents/skills/flow-*` are copies made at
+`openflow init` time — they stay frozen at whatever version was installed then. After upgrading,
+run this inside each workspace to refresh them:
 
 ```
 openflow update

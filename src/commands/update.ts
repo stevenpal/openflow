@@ -47,6 +47,7 @@ export function updateWorkspace(root: string, opts: { force?: boolean } = {}): U
 
   const skillsSrc = path.join(TEMPLATES_DIR, "skills");
   const installedSkills = syncSkills(skillsSrc, paths.claudeSkillsDir, manifest?.installedSkills ?? []);
+  syncSkills(skillsSrc, paths.agentsSkillsDir, manifest?.installedSkills ?? []);
 
   const commandsSrc = path.join(TEMPLATES_DIR, "commands", "flow");
   syncCommands(commandsSrc, paths.claudeCommandsDir);

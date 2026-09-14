@@ -72,6 +72,8 @@ describe("openflow update", () => {
     fs.writeFileSync(path.join(paths.claudeSkillsDir, "flow-old", "SKILL.md"), "old", "utf8");
     fs.mkdirSync(path.join(paths.claudeSkillsDir, "my-own-skill"), { recursive: true });
     fs.writeFileSync(path.join(paths.claudeSkillsDir, "my-own-skill", "SKILL.md"), "mine", "utf8");
+    fs.mkdirSync(path.join(paths.agentsSkillsDir, "flow-old"), { recursive: true });
+    fs.writeFileSync(path.join(paths.agentsSkillsDir, "flow-old", "SKILL.md"), "old", "utf8");
     fs.writeFileSync(path.join(paths.claudeCommandsDir, "stale.md"), "stale", "utf8");
     writeManifest(root, { ...manifest, cliVersion: "0.0.0-test", installedSkills: [...manifest.installedSkills, "flow-old"] });
 
@@ -80,6 +82,10 @@ describe("openflow update", () => {
     expect(result.updated).toBe(true);
     expect(fs.existsSync(path.join(paths.claudeSkillsDir, "flow-old"))).toBe(false);
     expect(fs.readFileSync(path.join(paths.claudeSkillsDir, "my-own-skill", "SKILL.md"), "utf8")).toBe("mine");
+    expect(fs.existsSync(path.join(paths.agentsSkillsDir, "flow-old"))).toBe(false);
+    expect(fs.readdirSync(paths.agentsSkillsDir).sort()).toEqual(
+      fs.readdirSync(paths.claudeSkillsDir).filter((n) => n !== "my-own-skill").sort(),
+    );
     expect(fs.existsSync(path.join(paths.claudeCommandsDir, "stale.md"))).toBe(false);
     expect(readManifest(root)?.cliVersion).toBe(cliVersion());
     expect(readManifest(root)?.installedSkills.sort()).toEqual(

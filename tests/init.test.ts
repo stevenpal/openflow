@@ -24,6 +24,8 @@ describe("openflow init", () => {
     expect(fs.readdirSync(paths.claudeSkillsDir).length).toBeGreaterThan(0);
     expect(fs.existsSync(paths.claudeCommandsDir)).toBe(true);
     expect(fs.readdirSync(paths.claudeCommandsDir).length).toBeGreaterThan(0);
+    expect(fs.existsSync(paths.agentsSkillsDir)).toBe(true);
+    expect(fs.readdirSync(paths.agentsSkillsDir).sort()).toEqual(fs.readdirSync(paths.claudeSkillsDir).sort());
 
     const ledgerContent = fs.readFileSync(paths.ledgerFile, "utf8");
     expect(ledgerContent).toContain("streams");

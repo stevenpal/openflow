@@ -13,6 +13,7 @@ export function workspacePaths(root: string) {
     queueFile: path.join(root, "queue.md"),
     claudeSkillsDir: path.join(root, ".claude", "skills"),
     claudeCommandsDir: path.join(root, ".claude", "commands", "flow"),
+    agentsSkillsDir: path.join(root, ".agents", "skills"),
   };
 }
 

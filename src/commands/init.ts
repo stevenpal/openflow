@@ -38,6 +38,9 @@ export function initWorkspace(root: string): InitResult {
   const installedSkills = syncSkills(skillsSrc, paths.claudeSkillsDir, []);
   created.push(paths.claudeSkillsDir);
 
+  syncSkills(skillsSrc, paths.agentsSkillsDir, []);
+  created.push(paths.agentsSkillsDir);
+
   const commandsSrc = path.join(TEMPLATES_DIR, "commands", "flow");
   syncCommands(commandsSrc, paths.claudeCommandsDir);
   created.push(paths.claudeCommandsDir);

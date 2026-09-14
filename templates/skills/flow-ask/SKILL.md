@@ -22,17 +22,19 @@ each step; don't default to loading full files when a targeted search will do.
 
 3. **Investigate each candidate stream using whatever mix of tools is most efficient**, similar to
    how you'd explore an unfamiliar codebase rather than loading it wholesale:
-   - Use `Grep` (optionally across `streams/**/normalized/*`) to search for keywords or entities
-     across many streams at once before deciding which are actually worth reading in full.
-   - Use `Glob`/`openflow streams list --id <id> --kind normalized` to see what snapshots exist for
-     a stream (e.g. if the question is about change over time, not just current state).
-   - Use `Read` on a specific snapshot (usually the latest, via
-     `openflow streams latest --id <id> --kind normalized`) only once you have reason to believe it
-     matters — full or partial (offset/limit) as fits the question.
+   - Search across many streams at once (optionally across `streams/**/normalized/*`) for keywords
+     or entities before deciding which are actually worth reading in full.
+   - List what snapshots exist for a stream — via `openflow streams list --id <id> --kind
+     normalized` or by listing the directory — if the question is about change over time, not just
+     current state.
+   - Read a specific snapshot (usually the latest, via `openflow streams latest --id <id> --kind
+     normalized`) only once you have reason to believe it matters — full or partial as fits the
+     question.
    - If a broad search would return more than you need in context, redirect it into a temp file
      under your scratchpad directory and read back only the relevant portion.
-   Escalate from cheap/narrow (grep) to expensive/broad (reading full files) only as the question
-   demands it — a question about one fact in one stream shouldn't cost a full-corpus read.
+   Escalate from cheap/narrow (a targeted search) to expensive/broad (reading full files) only as
+   the question demands it — a question about one fact in one stream shouldn't cost a full-corpus
+   read.
 
 4. **Synthesize an answer** that draws on everything relevant found across those streams, citing
    which stream(s) each part of the answer came from.
