@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
+import { stringify as stringifyYaml } from "yaml";
 import { initWorkspace } from "./commands/init.js";
 import { updateWorkspace, UpdateError } from "./commands/update.js";
 import { cliVersion } from "./manifest.js";
@@ -68,7 +69,7 @@ ledger
   .action((opts: { json: string }) => {
     try {
       const entry = addStream(process.cwd(), JSON.parse(opts.json));
-      console.log(JSON.stringify(entry, null, 2));
+      console.log(stringifyYaml(entry).trimEnd());
     } catch (err) {
       failWith(err);
     }
@@ -95,7 +96,7 @@ ledger
   .action((opts: { id: string; json: string }) => {
     try {
       const entry = updateStream(process.cwd(), opts.id, JSON.parse(opts.json));
-      console.log(JSON.stringify(entry, null, 2));
+      console.log(stringifyYaml(entry).trimEnd());
     } catch (err) {
       failWith(err);
     }
@@ -106,7 +107,7 @@ ledger
   .description("List valid stream entries; reports (never silently drops) invalid ones")
   .action(() => {
     const result = getStreams(process.cwd());
-    console.log(JSON.stringify(result, null, 2));
+    console.log(result.entries.length > 0 ? stringifyYaml(result.entries).trimEnd() : "streams: []");
     if (result.skipped.length > 0) {
       for (const skipped of result.skipped) {
         const id = (skipped.raw as { id?: string })?.id ?? "(unknown id)";
@@ -131,7 +132,7 @@ intents
       const op = JSON.parse(opts.op) as IntentOperation;
       const nextIntents = applyIntentOperation(current.intents, op);
       const entry = updateStream(process.cwd(), opts.id, { intents: nextIntents });
-      console.log(JSON.stringify(entry, null, 2));
+      console.log(stringifyYaml(entry).trimEnd());
     } catch (err) {
       failWith(err);
     }
@@ -224,7 +225,7 @@ streams
     try {
       const content = fs.readFileSync(opts.from, "utf8");
       const result = writeSnapshot(process.cwd(), opts.id, opts.kind, opts.ext, content);
-      console.log(JSON.stringify(result, null, 2));
+      console.log(stringifyYaml(result).trimEnd());
     } catch (err) {
       failWith(err);
     }
@@ -257,7 +258,9 @@ streams
   .requiredOption("--id <id>", "stream id")
   .requiredOption("--kind <kind>", "raw|normalized")
   .action((opts: { id: string; kind: "raw" | "normalized" }) => {
-    console.log(JSON.stringify(listSnapshots(process.cwd(), opts.id, opts.kind), null, 2));
+    for (const snapshotPath of listSnapshots(process.cwd(), opts.id, opts.kind)) {
+      console.log(snapshotPath);
+    }
   });
 
 const queue = program.command("queue").description("The human-editable queue document (queue.md)");
@@ -313,7 +316,7 @@ classify
       syncable,
       overriddenByPrompt: overridden,
     });
-    console.log(JSON.stringify({ syncable, note }, null, 2));
+    console.log(stringifyYaml({ syncable, note }).trimEnd());
   });
 
 const sync = program.command("sync").description("Per-stream retrieval outcome -> structured finding");
@@ -330,7 +333,14 @@ sync
       const retrieval: RetrievalResult = opts.failure
         ? { ok: false, failure: opts.failure }
         : { ok: true, normalizedContent: fs.readFileSync(opts.from!, "utf8") };
-      console.log(JSON.stringify(applyStreamSync(process.cwd(), opts.id, opts.ext, retrieval), null, 2));
+      const finding = applyStreamSync(process.cwd(), opts.id, opts.ext, retrieval);
+      if (finding.failure) {
+        console.log(`id: ${finding.id}\nstatus: failed\nreason: ${finding.failure}`);
+      } else if (finding.changed) {
+        console.log(`id: ${finding.id}\nstatus: changed\n\n${finding.diffText}`);
+      } else {
+        console.log(`id: ${finding.id}\nstatus: unchanged`);
+      }
     } catch (err) {
       failWith(err);
     }
@@ -342,8 +352,10 @@ sync
   .requiredOption("--path <path>", "recorded local file path")
   .action((opts: { path: string }) => {
     const result = readLocalFileSource(opts.path);
-    console.log(JSON.stringify(result, null, 2));
-    if (!result.ok) {
+    if (result.ok) {
+      console.log(result.content);
+    } else {
+      console.error(result.reason);
       process.exitCode = 1;
     }
   });
