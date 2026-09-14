@@ -28,11 +28,12 @@ Sync every syncable stream in this OpenFlow workspace.
      `openflow normalize tier2-template` + `openflow normalize cleanup`), store the new raw snapshot
      via `openflow streams snapshot --kind raw ...`, then report the outcome:
      `openflow sync report --id <id> --ext <ext> --from <normalized-file>` — this stores the new
-     normalized snapshot (never overwriting the prior one) and returns a structured finding
-     `{id, changed, addedLines, removedLines}`.
-   - On a failure, report it the same structured way without writing a new snapshot:
+     normalized snapshot (never overwriting the prior one) and prints the finding as plain text:
+     `id: <id>` and `status: changed|unchanged`, followed on a change by a unified diff (`---
+     previous` / `+++ current` with `@@` hunks) against the prior snapshot.
+   - On a failure, report it the same way without writing a new snapshot:
      `openflow sync report --id <id> --ext <ext> --failure "<specific cause>"` — this leaves the
-     stream at its last good snapshot and returns `{id, changed: false, failure}`.
+     stream at its last good snapshot and prints `id: <id>`, `status: failed`, `reason: <cause>`.
    Collect every subagent's finding before moving on. One stream's failure must not block the others.
 
 3. **Recompute affected derived streams** (main agent, not a subagent): for each `origin: derived`

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { applyStreamSync, readLocalFileSource } from "../src/sync.js";
+import { applyStreamSync, formatUnifiedDiff, readLocalFileSource } from "../src/sync.js";
 import { shouldRecomputeDerived } from "../src/derived.js";
 import { listSnapshots } from "../src/streams/storage.js";
 import { makeTempWorkspace, cleanupWorkspace } from "./helpers.js";
@@ -12,21 +12,55 @@ beforeEach(() => {
 });
 afterEach(() => cleanupWorkspace(root));
 
+describe("formatUnifiedDiff (Myers diff)", () => {
+  it("does not treat a moved/duplicate line as both removed and added", () => {
+    // A middle line is deleted; "10" recurs (as it would in a running-tally CSV column) and
+    // should not be spuriously flagged as added/removed just because set membership shifted.
+    const previous = "1\n10\n2\n10\n3";
+    const current = "1\n10\n10\n3";
+    const diff = formatUnifiedDiff(previous, current);
+    expect(diff).not.toContain("+10");
+    expect(diff).not.toContain("-10");
+    expect(diff).toContain("-2");
+  });
+
+  it("detects a genuine addition and removal around unchanged context", () => {
+    const previous = "a\nb\nc";
+    const current = "a\nx\nc";
+    const diff = formatUnifiedDiff(previous, current);
+    expect(diff).toContain("-b");
+    expect(diff).toContain("+x");
+    expect(diff).toContain(" a");
+    expect(diff).toContain(" c");
+  });
+
+  it("treats a null previous snapshot as fully added", () => {
+    const diff = formatUnifiedDiff(null, "a\nb");
+    expect(diff).toContain("+a");
+    expect(diff).toContain("+b");
+    expect(diff).not.toContain("\n-");
+  });
+
+  it("returns an empty string for identical content", () => {
+    expect(formatUnifiedDiff("same", "same")).toBe("");
+  });
+});
+
 describe("applyStreamSync (per-stream sync outcome)", () => {
-  it("produces a structured finding with diff highlights when content changed", () => {
+  it("produces a structured finding with a unified diff when content changed", () => {
     applyStreamSync(root, "s1", "md", { ok: true, normalizedContent: "line a\nline b" });
     const finding = applyStreamSync(root, "s1", "md", { ok: true, normalizedContent: "line a\nline c" });
 
     expect(finding).toMatchObject({ id: "s1", changed: true });
-    expect(finding.addedLines).toEqual(["line c"]);
-    expect(finding.removedLines).toEqual(["line b"]);
+    expect(finding.diffText).toContain("-line b");
+    expect(finding.diffText).toContain("+line c");
   });
 
-  it("reports unchanged with no diff highlights on an identical resync", () => {
+  it("reports unchanged with no diff text on an identical resync", () => {
     applyStreamSync(root, "s1", "md", { ok: true, normalizedContent: "same" });
     const finding = applyStreamSync(root, "s1", "md", { ok: true, normalizedContent: "same" });
     expect(finding.changed).toBe(false);
-    expect(finding.addedLines).toEqual([]);
+    expect(finding.diffText).toBeUndefined();
   });
 
   it("a simulated MCP 401 reports the specific failure and leaves the last good snapshot untouched", () => {

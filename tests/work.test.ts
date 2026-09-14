@@ -44,7 +44,7 @@ describe("/flow:work — scoped pre-work sync", () => {
   it("a meaningful change is reported via the finding's changed flag before proceeding", () => {
     const finding = applyStreamSync(root, "touched", "md", { ok: true, normalizedContent: "v2 - new detail" });
     expect(finding.changed).toBe(true);
-    expect(finding.addedLines).toContain("v2 - new detail");
+    expect(finding.diffText).toContain("+v2 - new detail");
   });
 
   it("a failed scoped sync leaves the last good snapshot available to proceed against", () => {

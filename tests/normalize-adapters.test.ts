@@ -13,8 +13,8 @@ import { adaptLocalFile } from "../src/normalize/adapters/local-file.js";
 describe("Tier 1 adapters map native payloads to the canonical shape", () => {
   it("slack -> chat", () => {
     expect(
-      adaptSlack({ messages: [{ user: "U1", text: "hey", ts: "123.456", thread_ts: "123.000" }] }),
-    ).toEqual([{ author: "U1", text: "hey", ts: "123.456", thread_id: "123.000" }]);
+      adaptSlack({ messages: [{ user: "U1", username: "User1", user_email: "user1@example.com", text: "hey", ts: "1789263795.074199", thread_ts: "1789263795.074199" }] }),
+    ).toEqual([{ author: "User1 <user1@example.com>", text: "hey", ts: "2026-09-13T01:43:15.074Z", thread_id: "1789263795.074199" }]);
   });
 
   it("google-docs -> rich-text, separating accepted body from suggestions", () => {
