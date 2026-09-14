@@ -8,9 +8,7 @@ import { addStream, removeStream, updateStream, getStreams, LedgerValidationErro
 import { applyIntentOperation, IntentOperationError, type IntentOperation } from "./ledger/intents.js";
 import { getDate, getPeriodStart, type PeriodUnit } from "./dates.js";
 import fs from "node:fs";
-import { ADAPTERS } from "./normalize/adapters/index.js";
-import { RENDERERS, TARGET_FILE_EXTENSION } from "./normalize/render.js";
-import { TIER2_EXTRACTION_TEMPLATE } from "./normalize/tier2-templates.js";
+import { EXTRACTION_TEMPLATE, SHAPE_DESCRIPTIONS } from "./normalize/extraction-templates.js";
 import { cleanup } from "./normalize/cleanup.js";
 import { writeSnapshot, latestSnapshot, listSnapshots, removeStreamFolder } from "./streams/storage.js";
 import type { StreamShape } from "./ledger/types.js";
@@ -169,31 +167,20 @@ dates
 const normalize = program.command("normalize").description("Raw -> normalized conversion pipeline");
 
 normalize
-  .command("tier1")
-  .description("Adapter + shared renderer: native payload -> normalized target format")
-  .requiredOption("--adapter <name>", `one of: ${Object.keys(ADAPTERS).join(", ")}`)
-  .requiredOption("--from <file>", "JSON file with the native payload")
-  .action((opts: { adapter: string; from: string }) => {
-    try {
-      const registration = ADAPTERS[opts.adapter];
-      if (!registration) {
-        throw new Error(`unknown adapter "${opts.adapter}"; known adapters: ${Object.keys(ADAPTERS).join(", ")}`);
-      }
-      const payload = JSON.parse(fs.readFileSync(opts.from, "utf8"));
-      const canonical = registration.adapt(payload);
-      const render = RENDERERS[registration.shape] as (c: unknown) => string;
-      console.log(render(canonical));
-    } catch (err) {
-      failWith(err);
+  .command("shapes")
+  .description("Print the current stream-shape menu with each shape's one-line selection description")
+  .action(() => {
+    for (const shape of Object.keys(SHAPE_DESCRIPTIONS) as StreamShape[]) {
+      console.log(`${shape}: ${SHAPE_DESCRIPTIONS[shape]}`);
     }
   });
 
 normalize
-  .command("tier2-template")
+  .command("template")
   .description("Print the verbatim-extraction template for a shape")
-  .requiredOption("--shape <shape>", `one of: ${Object.keys(TIER2_EXTRACTION_TEMPLATE).join(", ")}`)
+  .requiredOption("--shape <shape>", `one of: ${Object.keys(EXTRACTION_TEMPLATE).join(", ")}`)
   .action((opts: { shape: StreamShape }) => {
-    const template = TIER2_EXTRACTION_TEMPLATE[opts.shape];
+    const template = EXTRACTION_TEMPLATE[opts.shape];
     if (!template) {
       failWith(new Error(`unknown shape "${opts.shape}"`));
     }
@@ -202,7 +189,7 @@ normalize
 
 normalize
   .command("cleanup")
-  .description("Deterministic clean-up pass shared by every shape's Tier 2 path")
+  .description("Deterministic clean-up pass shared by every shape's agent-extraction path, except plain-text (which is stored byte-for-byte and must not be passed to this command)")
   .requiredOption("--from <file>", "file with agent-extracted text")
   .action((opts: { from: string }) => {
     try {

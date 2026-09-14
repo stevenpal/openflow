@@ -24,8 +24,8 @@ Sync every syncable stream in this OpenFlow workspace.
      server is unreachable, the credential is expired, or retrieval fails for any other reason,
      go to the failure case below with the specific cause — never guess at or silently work around it.
    - On successful retrieval, convert the result to normalized form the same way `/flow:add` did
-     (Tier 1 adapter via `openflow normalize tier1`, or Tier 2 extraction via the shape's
-     `openflow normalize tier2-template` + `openflow normalize cleanup`), store the new raw snapshot
+     (`openflow normalize template --shape <shape>` to extract verbatim, then
+     `openflow normalize cleanup` for every shape except plain-text), store the new raw snapshot
      via `openflow streams snapshot --kind raw ...`, then report the outcome:
      `openflow sync report --id <id> --ext <ext> --from <normalized-file>` — this stores the new
      normalized snapshot (never overwriting the prior one) and prints the finding as plain text:

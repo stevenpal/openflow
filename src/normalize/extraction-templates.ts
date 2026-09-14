@@ -1,13 +1,12 @@
 import type { StreamShape } from "../ledger/types.js";
 
 /**
- * Tier 2 verbatim-extraction instructions per shape, used when no Tier 1 adapter exists for a
- * source. The agent extracts content verbatim, in reading order, straight into the shape's fixed
- * target template below — never summarizing or rephrasing — and the result is then run through
- * `cleanup()` before being stored as the normalized snapshot, so Tier 1 and Tier 2 output land in
- * the same format.
+ * Verbatim-extraction instructions per shape. The agent extracts content verbatim, in reading
+ * order, straight into the shape's fixed target template below — never summarizing or
+ * rephrasing — and the result is then run through `cleanup()` (except for plain-text) before
+ * being stored as the normalized snapshot.
  */
-export const TIER2_EXTRACTION_TEMPLATE: Record<StreamShape, string> = {
+export const EXTRACTION_TEMPLATE: Record<StreamShape, string> = {
   chat: [
     "Extract every message verbatim, in the order they appear, one per block:",
     "**<author>** _<timestamp>_",
@@ -55,4 +54,31 @@ export const TIER2_EXTRACTION_TEMPLATE: Record<StreamShape, string> = {
   "plain-text": ["Copy the file's content verbatim, byte-for-byte where possible. Do not reformat."].join(
     "\n",
   ),
+};
+
+/** One-line, content-based selection description for each shape, printed by `openflow normalize shapes`. */
+export const SHAPE_DESCRIPTIONS: Record<StreamShape, string> = {
+  chat: "Chat/messaging: a sequence of authored messages, e.g. a Slack thread or IM conversation.",
+  "rich-text": "Structured rich-text document: headings/paragraphs/bullets with comments and suggestions, e.g. a Google Doc.",
+  tabular: "Tabular/spreadsheet: rows and columns of data, e.g. a Google Sheet or CSV export.",
+  presentation: "Presentation: a sequence of slides with bullets and speaker notes, e.g. a Google Slides deck.",
+  "web-page": "Web page: an article or page's title, URL, and body paragraphs.",
+  email: "Email: one or more messages with subject/from/to/date headers and a body.",
+  "query-result": "Query/API result: a structured record set returned by a query or API call.",
+  transcript: "Audio/video transcript: timestamped utterances attributed to speakers.",
+  "task-item": "Project/task tracker item: a ticket or issue with status, assignee, description, and comments.",
+  "plain-text": "Plain text/code/config: content where byte-for-byte fidelity matters and no reformatting is safe.",
+};
+
+export const TARGET_FILE_EXTENSION: Record<StreamShape, string> = {
+  chat: "md",
+  "rich-text": "md",
+  tabular: "csv",
+  presentation: "md",
+  "web-page": "md",
+  email: "md",
+  "query-result": "json",
+  transcript: "md",
+  "task-item": "md",
+  "plain-text": "txt",
 };

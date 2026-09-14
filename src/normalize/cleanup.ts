@@ -1,5 +1,5 @@
 /**
- * Deterministic clean-up shared by every shape's Tier 2 (agent verbatim-extraction) path.
+ * Deterministic clean-up shared by every non-plain-text shape's agent verbatim-extraction path.
  * Removes run-to-run formatting noise (trailing whitespace, bullet marker variance, blank-line
  * runs, heading spacing) without touching the actual extracted wording. Idempotent by
  * construction: every step normalizes toward a single fixed form.

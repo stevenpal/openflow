@@ -25,34 +25,18 @@ derive a new stream from existing ones.
 
 3. **For a source stream: retrieve the content now**, using whatever tool is appropriate (Read for a
    local file, WebFetch for a URL, an MCP tool for a described resource). Then:
-   - Pick this stream's **shape** based on what the retrieved content actually is, never by which
-     source app or tool it came from:
-     - **chat** — author/timestamp message exchanges (Slack, Discord, SMS threads)
-     - **rich-text** — formatted prose with headings/paragraphs, plus any comments or pending
-       suggested edits (Google Docs, wikis, Word docs)
-     - **tabular** — row/column data (spreadsheets, CSV exports, DB table dumps)
-     - **presentation** — slide decks with per-slide bullets and optional speaker notes
-     - **web-page** — an article or page fetched from a URL
-     - **email** — a message thread with From/To/Date headers per message
-     - **query-result** — a structured API or database query response (records/fields)
-     - **transcript** — timestamped speech-to-text of spoken audio/video
-     - **task-item** — a single tracked work item with status/assignee (Linear issue, Jira ticket)
-     - **plain-text** — freeform unstructured text that doesn't fit any shape above (notes, code,
-       config)
-     If the content plausibly fits more than one shape (e.g. a task item with a comment thread),
-     classify by the primary content — the shape's target template already has room for secondary
-     facets like comments.
-   - Convert the raw payload into that shape's normalized form:
-     - **Deterministic-extraction** (openflow owns retrieval and transformation end-to-end, with no
-       vendor tool reshaping the content in between — currently only `local-file` on text-shaped
-       content): write the raw payload as JSON to a temp file, then run
-       `openflow normalize deterministic --adapter local-file --from <file>` and use its stdout as
-       the normalized content.
-     - **Agent-extraction** (every other source, including any local file that isn't text-shaped):
-       run `openflow normalize tier2-template --shape <shape>` to get that shape's exact target
-       template, then extract the content verbatim, in reading order, into it — never summarize or
-       rephrase. Write your extraction to a temp file and run
-       `openflow normalize cleanup --from <file>` to get the final normalized content.
+   - Run `openflow normalize shapes` to see the live shape menu (shape name + one-line, content-based
+     selection description for each). Pick this stream's **shape** based on what the retrieved content
+     actually is, never by which source app or tool it came from. If the content plausibly fits more
+     than one shape (e.g. a task item with a comment thread), classify by the primary content — the
+     shape's target template already has room for secondary facets like comments.
+   - Run `openflow normalize template --shape <shape>` to get that shape's exact target template, then
+     extract the content verbatim, in reading order, into it — never summarize or rephrase. Write your
+     extraction to a temp file.
+   - For every shape except **plain-text**, run `openflow normalize cleanup --from <file>` on that
+     extraction to get the final normalized content. For **plain-text** (code/config/plain text where
+     byte-for-byte fidelity matters), skip `cleanup` entirely — the raw and normalized snapshots are
+     the same byte-for-byte content, written directly.
    - Store both snapshots (never overwrite a prior version):
      `openflow streams snapshot --id <id> --kind raw --ext <ext> --from <raw-file>` and
      `openflow streams snapshot --id <id> --kind normalized --ext <ext> --from <normalized-file>`.
