@@ -78,10 +78,11 @@ derive a new stream from existing ones.
 8. **Immediate action on actionable content**: if what you just retrieved clearly implies something
    actionable right now (e.g. a meeting transcript with a follow-up action item), offer to act on it
    immediately — a direct edit to an affected stream's `intents`
-   (`openflow intents apply --id <id> --op '{"kind":"add"|"sharpen"|"drop",...}'`) and/or a new queue
-   item via
-   `openflow queue add --json '{"heading":"...","streamLine":"...","intent":"...","body":"..."}'`
-   — rather than only waiting for a future `/flow:sync`.
+   (`openflow intents apply --id <id> --op '<json>'` — run `openflow intents apply --help` for the
+   exact op JSON shape per kind) and/or a new queue item via `openflow queue add --json '<json>'`
+   (run `openflow queue add --help` for the exact field shape; see
+   `references/queue-item-guidance.md` for what makes each field worth writing) — rather than only
+   waiting for a future `/flow:sync`.
 
 **Guardrails**
 - Never write to the ledger file directly — always go through `openflow ledger add`/`update`.

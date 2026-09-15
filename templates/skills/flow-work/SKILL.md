@@ -30,8 +30,9 @@ Work through this OpenFlow workspace's queue.
 3. **Act on the item** with the user — respond, decide, draft, whatever the item calls for.
 
 4. **If working the item sharpens or changes why a stream matters**, rewrite that stream's `intents`
-   in place: `openflow intents apply --id <id> --op '{"kind":"sharpen"|"add"|"drop",...}'` — the same
-   edit/add/drop rule every other command uses, never an unconditional append.
+   in place: `openflow intents apply --id <id> --op '<json>'` (run `openflow intents apply --help`
+   for the exact op JSON shape per kind) — the same edit/add/drop rule every other command uses,
+   never an unconditional append.
 
 5. **On resolution, remove the item** with `openflow queue remove --heading "<exact heading>"` by
    default (whether resolved here, or already handled elsewhere and now moot). Users may also edit,

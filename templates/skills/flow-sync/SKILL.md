@@ -48,13 +48,12 @@ Sync every syncable stream in this OpenFlow workspace.
    `references/intent-guidance.md` for what makes an intent worth keeping vs. rewriting):
    - Does this finding sharpen an existing intent, represent a genuinely distinct new intent, or make
      an existing intent stale? Apply exactly one of those via
-     `openflow intents apply --id <id> --op '{"kind":"sharpen"|"add"|"drop",...}'`.
+     `openflow intents apply --id <id> --op '<json>'` — run `openflow intents apply --help` for the
+     exact op JSON shape per kind.
    - Is this finding queue-worthy (needs a human decision/response) or does it not rise to that level?
-     For queue-worthy findings, write an intent-focused item via
-     `openflow queue add --json '{"heading":"...","streamLine":"...","intent":"...","body":"..."}'`
-     — a short actionable heading, a **Stream** line (live URL if the stream type has one, else a
-     link to its local folder), an **Intent** line naming the ledger intent it traces to, and a
-     free-text body narrating the substance of what needs deciding.
+     For queue-worthy findings, write an item via `openflow queue add --json '<json>'` (run
+     `openflow queue add --help` for the exact field shape; see `references/queue-item-guidance.md`
+     for what makes each field worth writing).
 
 5. **Report a sync summary**: streams synced, streams changed, streams failed (with cause), derived
    streams recomputed, intents updated, and queue items added.

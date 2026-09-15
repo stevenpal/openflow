@@ -121,6 +121,15 @@ intents
   .description("Apply one sharpen/add/drop operation to a stream's intents, then persist via ledger update")
   .requiredOption("--id <id>", "stream id")
   .requiredOption("--op <json>", "JSON-encoded IntentOperation")
+  .addHelpText(
+    "after",
+    `
+Ops:
+  {"kind":"sharpen","match":"<existing intent, exact>","replacement":"<new text>"}
+  {"kind":"add","text":"<new intent>"}
+  {"kind":"drop","match":"<existing intent, exact>"}
+`,
+  )
   .action((opts: { id: string; op: string }) => {
     try {
       const current = getStreams(process.cwd()).entries.find((e) => e.id === opts.id);

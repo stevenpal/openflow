@@ -13,6 +13,7 @@ const skillsDir = path.join(rootDir, "templates", "skills");
 // Which skills need which shared reference file.
 const distribution = {
   "intent-guidance.md": ["flow-add", "flow-sync", "flow-work"],
+  "queue-item-guidance.md": ["flow-add", "flow-sync"],
 };
 
 for (const [fileName, skillNames] of Object.entries(distribution)) {
