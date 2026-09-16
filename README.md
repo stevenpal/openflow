@@ -1,3 +1,5 @@
+![OpenFlow](assets/openflow-banner.png)
+
 # OpenFlow
 
 **Keep your agent in the flow — for as long as the work takes. Secure. Private. And Local.**
@@ -154,6 +156,26 @@ the dependency model simple — no chains, no cycles to detect. Like source stre
 stream can be syncable (recomputed whenever a source changes) or static (computed once at add-time
 and left alone).
 
+## How do I work on multiple projects?
+
+Each OpenFlow workspace is just a folder you ran `openflow init` in, so working on multiple
+projects at once means creating another folder and initializing it there:
+
+```
+mkdir another-workspace && cd another-workspace
+openflow init
+```
+
+You then launch your coding agent inside whichever workspace you want to work in, and it only
+sees that workspace's streams, ledger, and queue. A workspace is really a grouping of streams and
+intents — how you divide that up is entirely up to you. Some people split by initiative, others
+by product, client, or project; if two efforts feel unrelated, or you just want to keep them
+mentally separate while you work, give them their own workspace.
+
+The same stream can be added to more than one workspace if it's genuinely relevant to both — a
+workspace boundary is about how you want to organize and think about your work, not a hard
+ownership rule over the underlying source.
+
 ## Why OpenFlow vs. Alternatives
 
 Most existing approaches to "AI memory" fall into one of three buckets, and OpenFlow is
@@ -277,12 +299,11 @@ so a genuinely separate project just gets its own folder and its own `openflow i
 
 ### Upgrading
 
-`npm install -g @stevenpal/openflow@latest` upgrades the CLI, but a workspace's installed
-`.claude/skills/flow-*`, `.claude/commands/flow/`, and `.agents/skills/flow-*` are copies made at
-`openflow init` time — they stay frozen at whatever version was installed then. After upgrading,
-run this inside each workspace to refresh them:
+Upgrade the OpenFlow CLI and update a workspace's installed agent skills by doing the following:
 
 ```
+npm install -g @stevenpal/openflow@latest
+cd my-workspace
 openflow update
 ```
 
