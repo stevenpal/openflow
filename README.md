@@ -1,6 +1,6 @@
 # OpenFlow
 
-**Keep your agent in the flow — for as long as the work takes.**
+**Keep your agent in the flow — for as long as the work takes. Secure. Private. And Local.**
 
 A local, versioned memory of the streams — documents, threads, queries, conversations — that
 flow into your work, built for coding-agent harnesses like Claude Code, Cursor, and Codex.
