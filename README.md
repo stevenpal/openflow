@@ -68,7 +68,7 @@ $ claude
 
 **Track the PRD:**
 
-> `/flow:add https://docs.google.com/...`
+> `/flow:add` https://docs.google.com/...
 > This is the PRD I'm working on to outline the requirements for the Q4 mobile launch — we'll
 > need to iterate on feedback from engineering, design, and sales.
 
@@ -78,7 +78,7 @@ Added "Acme Q4 mobile launch PRD" to tracked streams with intent: "..."
 
 **Track the sales channel:**
 
-> `/flow:add https://acme.slack.com/...`
+> `/flow:add` https://acme.slack.com/...
 > Let's track this Slack channel we have going with the APAC sales team — there's a lot of
 > chatter about the upcoming launch, including feedback from customers and prospects that may
 > drive changes to positioning and messaging.
