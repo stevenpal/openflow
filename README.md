@@ -68,7 +68,7 @@ $ claude
 
 **Track the PRD:**
 
-> `/flow:add` https://docs.google.com/...
+> `/flow:add' https://docs.google.com/...`
 > This is the PRD I'm working on to outline the requirements for the Q4 mobile launch — we'll
 > need to iterate on feedback from engineering, design, and sales.
 
@@ -78,7 +78,7 @@ Added "Acme Q4 mobile launch PRD" to tracked streams with intent: "..."
 
 **Track the sales channel:**
 
-> `/flow:add` https://acme.slack.com/...
+> `/flow:add https://acme.slack.com/...`
 > Let's track this Slack channel we have going with the APAC sales team — there's a lot of
 > chatter about the upcoming launch, including feedback from customers and prospects that may
 > drive changes to positioning and messaging.
@@ -120,6 +120,40 @@ pricing decision: ...
 `/flow:add` and `/flow:sync` can also act immediately — editing a doc, posting a reply — whenever
 the right move is obvious, rather than always deferring to the queue.
 
+## What are streams?
+
+A **stream** is anything OpenFlow tracks on your behalf — a document, a thread, a query, a
+conversation, a feed. Every stream is added for a reason (its intent), and every stream has an
+origin:
+
+- **Source streams** are pulled straight from wherever they live: a Google Doc, a Slack channel or
+  thread, a PDF someone sent you, a SQL query against a dashboard, a web page. `/flow:sync` fetches
+  the latest version, diffs it against the last snapshot, and matches what changed against the
+  stream's intents.
+- Streams can also be **static** instead of syncable — a one-time snapshot that's never pulled
+  again, useful for reference material that isn't expected to change.
+
+**Derived streams** are a second kind of stream: instead of coming from an external source, a
+derived stream is computed from one or more source streams already in your workspace, using a
+transformation recipe you define once. It behaves like any other stream for the purposes of
+intents and the queue, but its content comes from a recipe applied to its sources rather than a
+pull from the outside world.
+
+This is useful because raw source streams are often not the shape you actually need. Say you're
+syncing a handful of streams that are really queries against a database or reports pulled from
+other systems — they land as CSV or JSON, one snapshot at a time. On their own that's just data;
+what you're usually after is a transformation of it in service of some intent: a report that
+surfaces trends or anomalies across the raw numbers, or just the latest headline figures — total
+adoption so far, revenue this quarter — that you need to drop into a weekly report for senior
+management or feed into other ongoing analysis. Rather than doing that transformation by hand
+every time a source refreshes, you define it once as a derived stream, and the agent re-derives it
+automatically whenever `/flow:sync` detects that one of its source streams changed.
+
+A derived stream can only take source streams as inputs (not other derived streams), which keeps
+the dependency model simple — no chains, no cycles to detect. Like source streams, a derived
+stream can be syncable (recomputed whenever a source changes) or static (computed once at add-time
+and left alone).
+
 ## Why OpenFlow vs. Alternatives
 
 Most existing approaches to "AI memory" fall into one of three buckets, and OpenFlow is
@@ -139,22 +173,28 @@ deliberately none of them:
   lock-in, which gets a lot right. But getting content in is entirely on you: every doc, transcript,
   or thread update has to be deliberately cut, pasted, and re-ingested by hand. There's no sync —
   the tool doesn't know a source changed unless you notice and feed it in again.
+- **Cloud automation/agent platforms** (n8n, Zapier, hosted cloud agents) — genuinely capable at
+  wiring sources together and transforming data on a schedule, which is what OpenFlow's derived
+  streams are also doing. But the processing happens on someone else's infrastructure, which means
+  your database exports, internal reports, and Slack threads get piped through a third-party
+  vendor to be transformed — the same data-sharing exposure as a company-brain platform, just
+  wearing a workflow-automation label instead of a knowledge-platform one.
 
 OpenFlow keeps the local-first, plain-text ownership of a second-brain tool, but replaces manual
 paste-in with **active syncing**: point it at a source once, and `openflow sync` diffs it against
 the last version it saw, every time, without you re-reading or re-pasting anything.
 
-| | Claude/ChatGPT Projects | Company brain (Glean, ChatPRD.ai, DevRev) | PM-Brain (copy/paste tools) | **OpenFlow** |
-|---|---|---|---|---|
-| **Model** | Passive knowledge container | Centrally managed knowledge platform | Passive, manually-fed local store | Active, delta-driven stream tracker |
-| **Organizing principle** | Files in a pool, no structure beyond the project | Topic/document search over everything integrated | Folders by document type (knowledge, decisions, stakeholders...) | Organized by **intent** — the reasons a stream is tracked, kept current as work evolves |
-| **Getting content in** | Manual upload/paste | Admin-configured integrations into systems of record | Manual `/ingest`, one artifact at a time | Point at a file/URL/source once via `/flow:add` |
-| **Staying current** | Manual re-upload when a source changes | Live, but only for what's integrated by an admin | No live sync — re-ingest by hand to catch changes | `/flow:sync` diffs each tracked source automatically |
-| **Who controls it** | You, per-project, per-platform | IT/admin, org-wide | You, entirely manual | You, per-workspace, no admin required |
-| **Where context lives** | Vendor's cloud | Vendor's cloud | Local plain-text files | Local plain-text files (Markdown/YAML), in your own repo |
-| **Model/agent choice** | Whatever model that platform runs | Whatever model that platform runs | Whatever chat tool you paste into | Any harness that supports skills — Claude Code, Cursor, Codex, others |
-| **Taking action** | Read-only; you copy the answer out by hand | Mostly read-only reference | Read-only reference | Can act directly — reply in Slack, edit a doc — when the fix is obvious |
-| **Tracking *why* something matters** | Not modeled | Not modeled at the individual level | Manual tagging, on you to maintain | Explicit **intents** per stream, kept current automatically |
+| | Claude/ChatGPT Projects | Company brain (Glean, ChatPRD.ai, DevRev) | Cloud automation (n8n, Zapier, hosted agents) | Manual Brain (copy/paste tools) | **OpenFlow** |
+|---|---|---|---|---|---|
+| **Model** | Passive knowledge container | Centrally managed knowledge platform | Hosted workflow/agent runner | Passive, manually-fed local store | Active, delta-driven stream tracker |
+| **Organizing principle** | Files in a pool, no structure beyond the project | Topic/document search over everything integrated | Workflows/pipelines wired between connectors | Folders by document type (knowledge, decisions, stakeholders...) | Organized by **intent** — the reasons a stream is tracked, kept current as work evolves |
+| **Getting content in** | Manual upload/paste | Admin-configured integrations into systems of record | Admin/builder-configured connectors and triggers | Manual `/ingest`, one artifact at a time | Point at a file/URL/source once via `/flow:add` |
+| **Staying current** | Manual re-upload when a source changes | Live, but only for what's integrated by an admin | Live, on whatever schedule/trigger the workflow defines | No live sync — re-ingest by hand to catch changes | `/flow:sync` diffs each tracked source automatically |
+| **Who controls it** | You, per-project, per-platform | IT/admin, org-wide | Whoever builds/owns the workflow, often central | You, entirely manual | You, per-workspace, no admin required |
+| **Where context and processing live** | Vendor's cloud | Vendor's cloud | Vendor's cloud — your data is transformed on their servers | Local plain-text files | Local plain-text files (Markdown/YAML), in your own repo — transformations (derived streams) also run locally |
+| **Model/agent choice** | Whatever model that platform runs | Whatever model that platform runs | Whatever the platform/vendor supports | Whatever chat tool you paste into | Any harness that supports skills — Claude Code, Cursor, Codex, others |
+| **Taking action** | Read-only; you copy the answer out by hand | Mostly read-only reference | Can act directly — that's the point of a workflow | Read-only reference | Can act directly — reply in Slack, edit a doc — when the fix is obvious |
+| **Tracking *why* something matters** | Not modeled | Not modeled at the individual level | Not modeled — workflows encode *how*, not *why* | Manual tagging, on you to maintain | Explicit **intents** per stream, kept current automatically |
 
 The concrete differences that fall out of that:
 
@@ -177,6 +217,13 @@ The concrete differences that fall out of that:
   live source behind an MCP server. Some are **static** (a meeting transcript, a PDF — snapshotted
   once, never re-checked); some are **syncable** (a Slack thread, a Google Doc, a query — diffed on
   every `openflow sync`). You decide once at add time, and can flip it later.
+- **Transformation happens locally, too.** Tools like n8n, Zapier, and hosted cloud agents can also
+  turn raw exports into something useful — that's what a derived stream does. The difference is
+  where it runs: those platforms process your data on their infrastructure, which means the same
+  database dumps, reports, and threads you're trying to keep private end up flowing through a
+  third-party vendor to be transformed, the same exposure as a company-brain platform under a
+  different name. A derived stream runs the same transformation locally, on your machine, using
+  whatever agent harness you already trust with the rest of your work.
 - **You own the data.** Everything lives in a folder you control: a YAML ledger of what's tracked
   and why, a queue of what needs a decision, and per-stream snapshots — all plain text, all
   git-friendly, none of it locked inside a vendor's account.
