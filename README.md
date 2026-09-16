@@ -1,7 +1,9 @@
 # OpenFlow
 
-**A local, versioned memory of the streams — documents, threads, queries, conversations — that
-flow into your work, built for coding-agent harnesses like Claude Code, Cursor, and Codex.**
+**Keep your agent in the flow — for as long as the work takes.**
+
+A local, versioned memory of the streams — documents, threads, queries, conversations — that
+flow into your work, built for coding-agent harnesses like Claude Code, Cursor, and Codex.
 
 OpenFlow lets a knowledge worker point an agent at the things they actually track — a Slack
 thread, a Google Doc, a SQL dashboard, a PDF someone sent them — and keep working with that agent
@@ -18,13 +20,107 @@ to work. Knowledge work is dynamic — the streams you track today may serve a d
 next month, or serve two purposes at once — so intents are living text the agent keeps current,
 not a fixed label applied once at ingest time.
 
+## Who it's for
+
+OpenFlow is for anyone whose job is tracking a shifting set of documents, threads, and
+conversations, and who wants an agent to carry that context forward instead of re-reading and
+re-pasting it every session.
+
+- **Product managers** — track a PRD, the engineering thread debating a tradeoff, and customer
+  feedback rolling in, all tied to the same launch decision.
+- **Product marketing managers** — watch positioning docs, competitive intel, and sales channel
+  chatter for anything that should change messaging before it ships.
+- **Analysts** — follow a dashboard or query alongside the Slack thread discussing what the
+  numbers mean, so a metric change and its context never drift apart.
+- **Sales and sales operations** — keep tabs on deal threads, pricing docs, and territory
+  discussions without re-reading a channel's full history before every call.
+- **Engineering managers** — track design docs, incident threads, and planning discussions across
+  multiple teams, and get flagged the moment a decision affects a commitment.
+
+## Quick Setup
+
 ```
 npm install -g @stevenpal/openflow@latest
 mkdir my-workspace && cd my-workspace
 openflow init
 ```
 
-## Why OpenFlow
+## Core workflow
+
+All day-to-day work happens through slash commands and skills your agent harness loads from the workspace:
+
+| Command | What it does |
+|---|---|
+| `/flow:add` | Add a stream — a file, URL, or description of a live source. Classifies it as static or syncable, takes an initial snapshot, and records the **intent** — why you're tracking it — as its first entry. |
+| `/flow:sync` | Pull the latest version of every syncable stream, diff it against the last snapshot, match what changed against each stream's intents, and turn what's relevant into queue items or direct action. |
+| `/flow:manage` | Toggle a stream between syncable and static, or remove it from the workspace (never touches the remote source itself). |
+| `/flow:work` | Pick up the queue cold — grouped by **intent**, not a flat per-source list — and work through it with the agent. Syncs just the stream(s) involved before acting on them. |
+| `/flow:ask` | Ask a question across everything currently tracked, when it doesn't map to one queue item. |
+
+## A Typical Day with OpenFlow
+
+A typical session looks like:
+
+```
+$ cd my-workspace
+$ claude
+```
+
+**Track the PRD:**
+
+> `/flow:add https://docs.google.com/...`
+> This is the PRD I'm working on to outline the requirements for the Q4 mobile launch — we'll
+> need to iterate on feedback from engineering, design, and sales.
+
+```
+Added "Acme Q4 mobile launch PRD" to tracked streams with intent: "..."
+```
+
+**Track the sales channel:**
+
+> `/flow:add https://acme.slack.com/...`
+> Let's track this Slack channel we have going with the APAC sales team — there's a lot of
+> chatter about the upcoming launch, including feedback from customers and prospects that may
+> drive changes to positioning and messaging.
+
+```
+Added "Acme APAC sales team" to tracked streams with intent: "..."
+```
+
+**Sync and see what's new:**
+
+> `/flow:sync`
+
+```
+There were 3 new comments in the PRD, all from the engineering team. They said that we'll have
+to make a decision between X and Y if we want to hit the launch date ...
+
+There were 25 new messages in the APAC sales team Slack channel, mostly from the sales team
+about the upcoming launch, but a few that could drive pricing changes depending on ...
+
+I added two items to your work queue based on these. Do you want to act on these now?
+```
+
+**Work the queue:**
+
+> `/flow:work`
+> Regarding the engineering team's concerns, let's update the PRD to reflect the following
+> decision regarding X and Y .... Also, let's share a summary of that decision in the
+> Engineering Slack channel so that folks are aware. On the APAC sales thoughts on pricing, can
+> you help me think through the pricing options relative to competitor Z? Let's come up with two
+> options and share them with the sales team for feedback.
+
+```
+I updated the Requirements list section of the PRD to reflect ....
+
+Based on the PRD and the Slack discussion, there are three factors that could impact the
+pricing decision: ...
+```
+
+`/flow:add` and `/flow:sync` can also act immediately — editing a doc, posting a reply — whenever
+the right move is obvious, rather than always deferring to the queue.
+
+## Why OpenFlow vs. Alternatives
 
 Most existing approaches to "AI memory" fall into one of three buckets, and OpenFlow is
 deliberately none of them:
@@ -34,7 +130,7 @@ deliberately none of them:
   questions, but it breaks down the moment the source keeps changing — the Google Doc gets new
   comments, the Slack thread gets new replies — since nothing tells you that happened. You find out
   by manually rechecking, or you don't find out at all.
-- **"Company brain" platforms** (Glean, Braincast/Brain.co, and narrower PM-focused versions like
+- **"Company brain" platforms** (Glean, DevRev, Brain.co, and narrower PM-focused versions like
   ChatPRD.ai) — centrally managed, admin-configured integrations into systems of record (Notion,
   Jira, your data warehouse). Powerful once IT has wired it up, but it's top-down infrastructure,
   not something one person can point at *their* Slack thread and *their* Google Doc in five
@@ -48,7 +144,7 @@ OpenFlow keeps the local-first, plain-text ownership of a second-brain tool, but
 paste-in with **active syncing**: point it at a source once, and `openflow sync` diffs it against
 the last version it saw, every time, without you re-reading or re-pasting anything.
 
-| | Claude/ChatGPT Projects | Company brain (Glean, ChatPRD.ai) | PM-Brain (copy/paste tools) | **OpenFlow** |
+| | Claude/ChatGPT Projects | Company brain (Glean, ChatPRD.ai, DevRev) | PM-Brain (copy/paste tools) | **OpenFlow** |
 |---|---|---|---|---|
 | **Model** | Passive knowledge container | Centrally managed knowledge platform | Passive, manually-fed local store | Active, delta-driven stream tracker |
 | **Organizing principle** | Files in a pool, no structure beyond the project | Topic/document search over everything integrated | Folders by document type (knowledge, decisions, stakeholders...) | Organized by **intent** — the reasons a stream is tracked, kept current as work evolves |
@@ -92,19 +188,19 @@ The concrete differences that fall out of that:
   Swap Claude Code for Cursor, Codex, or a future harness, and your ledger, queue, and stream
   history come with you unchanged.
 
-## Requirements
+## System Requirements
 
 - **Node.js 18+**
-- **An agent harness that supports skills** — Claude Code, Cursor, Codex, or similar. `openflow
-  init` installs the `/flow:*` skills into `.claude/skills` and `.claude/commands/flow` for Claude
-  Code, and the same skills into `.agents/skills` for other harnesses that read the shared
+- **An agent harness that supports skills** — Claude Code, Cursor, Codex, or similar. 
+  `openflow init` installs the `/flow:*` skills into `.claude/skills` and `.claude/commands/flow` for
+  Claude Code, and the same skills into `.agents/skills` for other harnesses that read the shared
   cross-tool skills convention, so the harness you use day to day needs to be able to load skills
   from a project folder.
-- **Optional: MCP servers** for the specific streams you want to track (e.g. a Google Docs MCP
-  server, a Slack MCP server, a database MCP server). Not required to use OpenFlow at all — you
-  can add a stream from a plain file or URL with no MCP server behind it — but a configured MCP
-  server is what lets `openflow sync` pull a live update itself instead of you pasting in the
-  latest content by hand.
+- **Optional: MCP servers** for the specific streams you want to track (e.g. a Google Drive MCP
+  server, a Gmail MCP server, a Google Calendar MCP server, a Slack MCP server, a database MCP server).
+  Not required to use OpenFlow at all — you can add a stream from a plain file or URL with no MCP 
+  server behind it — but a configured MCP server is what lets `openflow sync` pull a live update
+  itself instead of you pasting in the latest content by hand.
 
 ## Install
 
@@ -148,29 +244,6 @@ Check what's currently installed with:
 ```
 openflow --version
 ```
-
-## Core workflow
-
-All day-to-day work happens through slash commands your agent harness loads from the workspace:
-
-| Command | What it does |
-|---|---|
-| `/flow:add` | Add a stream — a file, URL, or description of a live source. Classifies it as static or syncable, takes an initial snapshot, and records the **intent** — why you're tracking it — as its first entry. |
-| `/flow:sync` | Pull the latest version of every syncable stream, diff it against the last snapshot, match what changed against each stream's intents, and turn what's relevant into queue items or direct action. |
-| `/flow:manage` | Toggle a stream between syncable and static, or remove it from the workspace (never touches the remote source itself). |
-| `/flow:work` | Pick up the queue cold — grouped by **intent**, not a flat per-source list — and work through it with the agent. Syncs just the stream(s) involved before acting on them. |
-| `/flow:ask` | Ask a question across everything currently tracked, when it doesn't map to one queue item. |
-
-A typical session looks like:
-
-```
-/flow:add https://docs.google.com/... this is the PRD we're tracking scope changes against
-/flow:sync
-/flow:work
-```
-
-`/flow:add` and `/flow:sync` can also act immediately — editing a doc, posting a reply — whenever
-the right move is obvious, rather than always deferring to the queue.
 
 ## Status
 
