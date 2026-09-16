@@ -4,6 +4,9 @@
   "description": "Local, versioned memory of the streams a workspace cares about, for coding-agent harnesses.",
   "license": "MIT",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "openflow": "./dist/cli.js"
   },

@@ -318,3 +318,7 @@ openflow --version
 OpenFlow is early and under active development. The design rationale for streams, the intent
 ledger, sync semantics, and the normalization pipeline lives in `openspec/` for anyone digging
 into the "why" behind a given behavior.
+
+## License
+
+MIT
