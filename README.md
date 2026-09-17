@@ -1,5 +1,9 @@
 ![OpenFlow](assets/openflow-banner.png)
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white)](https://discord.gg/aKCtcBQ2w)
+[![Stars](https://img.shields.io/github/stars/stevenpal/openflow?style=social)](https://github.com/stevenpal/openflow/stargazers)
+
 # OpenFlow
 
 **Keep your agent in the flow — for as long as the work takes. Secure. Private. And Local.**
